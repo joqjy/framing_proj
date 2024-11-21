@@ -1,0 +1,95 @@
+import '@xyflow/react/dist/style.css';
+import { useCallback, useState } from 'react';
+import { ReactFlow, useNodesState, useEdgesState, addEdge, Background, BackgroundVariant, useKeyPress } from '@xyflow/react';
+import CustomNode from '../components/CustomNode.tsx';
+
+const initialNodes = [
+  { id: '1', position: { x: 100, y: 100 }, selected: false, type: 'customNode', data: { label: 'question'} },
+  { id: '2', position: { x: 100, y: 200 }, selected: false, type: 'customNode', data: { label: 'answer'} },
+];
+const initialEdges = [{ id: 'e1-2', source: '1', selected: false, target: '2' }];
+
+const nodeTypes = {
+    customNode: CustomNode,
+};
+
+
+function Canvas () {
+    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+    const [nodesToCopy, setNodesToCopy] = useState(nodes.filter((node) => node.selected==true));
+    const [edgesToCopy, setEdgesToCopy] = useState(edges.filter((edge) => edge.selected==true));
+
+    const ctrlc = useKeyPress(['Control+c']);
+    const ctrlv = useKeyPress(['Control+v']);
+
+
+    const keyPressHandler = () => {
+        if (ctrlc) {
+            copyHandler();
+        }
+        if (ctrlv) {
+            pasteHandler();
+        }
+    }
+   
+    const onConnect = useCallback(
+      (params: any) => setEdges((eds) => addEdge(params, eds)),
+      [setEdges],
+    );
+
+    const copyHandler = () => {
+        // get selected nodes
+        let selectedNodes = nodes.filter((node) => node.selected==true);
+        let selectedNodeIds = selectedNodes.map((nodes) => nodes.id);
+        console.log(selectedNodeIds)
+
+        let selectedEdges = edges.filter((edge) => edge.selected==true && selectedNodeIds.includes(edge.source) && selectedNodeIds.includes(edge.target));
+        if (selectedNodes.length > 0) {
+            // save state
+            setNodesToCopy(selectedNodes);
+            console.log("Nodes copied successfully!")
+
+            // check if any edges were copied
+            if (selectedEdges.length > 0) {
+                setEdgesToCopy(selectedEdges);
+                console.log("Edges copied successfully!")
+            }
+        }
+    }
+
+    const pasteHandler = useCallback(() => {
+        const newNodeId = Math.floor(Math.random() * 100)/100;
+
+        // create new nodes to paste (change id and position of existing)
+        const newNodes = nodesToCopy.map((node) => node = {...node, id: `${node.id}-${newNodeId}`, selected:false, position: {x: node.position.x + 10, y: node.position.y + 10}});
+        setNodes((nds) => nds.concat(newNodes));
+        console.log(newNodes);
+
+        // create new edges to paste
+        const newEdges = edgesToCopy.map((edge) => edge = {...edge, id: `${edge.id}-${newNodeId}`, selected: false, source: `${edge.source}-${newNodeId}`, target: `${edge.target}-${newNodeId}`})
+        setEdges((eds) => eds.concat(newEdges));
+        console.log(newEdges);
+    }, [nodesToCopy, edgesToCopy])
+
+    return (
+        <div className='main-canvas' style={{ width: '100vw', height: '100vh'}}>
+            <button onClick={copyHandler} >copy</button>
+            <button onClick={pasteHandler}>paste</button>
+            
+            <ReactFlow 
+                nodes={nodes}
+                nodeTypes={nodeTypes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onKeyUp={keyPressHandler}
+            >
+                <Background variant={BackgroundVariant.Dots} gap={12} size={1}/>
+            </ReactFlow>
+        </div>
+    );
+}
+
+export default Canvas;

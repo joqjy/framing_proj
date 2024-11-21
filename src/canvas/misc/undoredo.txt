@@ -1,0 +1,93 @@
+import '@xyflow/react/dist/style.css';
+import { useCallback, useState } from 'react';
+import { ReactFlow, useNodesState, useEdgesState, addEdge, Background, BackgroundVariant, applyNodeChanges, applyEdgeChanges} from '@xyflow/react';
+import useUndoable from 'use-undoable';
+import CustomNode from '../components/CustomNode.tsx';
+
+const initialNodes = [
+  { id: '1', position: { x: 100, y: 100 }, selected: false, type: 'customNode', data: { label: 'question'} },
+  { id: '2', position: { x: 100, y: 200 }, selected: false, type: 'customNode', data: { label: 'answer'} },
+];
+const initialEdges = [{ id: 'e1-2', source: '1', target: '2' }];
+
+const nodeTypes = {
+    customNode: CustomNode,
+};
+
+
+function Canvas () {
+    const [elements, setElements, { past, future, undo, redo}] = useUndoable({nodes: initialNodes, edges: initialEdges});
+
+    const triggerUpdate = useCallback((t:any, v:any, overwrite: boolean=false) => {
+        setElements(e => ({
+            nodes: t === 'nodes' ? v : e.nodes,
+            edges: t === 'edges' ? v : e.edges,
+        }), undefined, overwrite);
+    }, [setElements]);
+
+
+    const onConnect = useCallback((connection: any) => {
+        triggerUpdate('edges', addEdge(connection, elements.edges));
+    }, [triggerUpdate, elements.edges]);
+
+    const onNodesChange = useCallback((changes: any) => {
+        if ((changes[0].type=='position' && changes[0].dragging)) {
+            triggerUpdate('nodes', applyNodeChanges(changes, elements.nodes), true);
+        }
+        else {
+            triggerUpdate('nodes', applyNodeChanges(changes, elements.nodes));
+        }
+    },[triggerUpdate, elements.nodes]);
+
+    const onEdgesChange = useCallback((changes: any) => {
+		triggerUpdate('edges', applyEdgeChanges(changes, elements.edges));
+	},[triggerUpdate, elements.edges]);
+
+
+    const onNodeDragStop = (event: any, node: any) => {
+        console.log('drag stop', node);
+        console.log(past);
+        console.log(future);
+    }
+
+    const onNodeDragStart = (event: any, node: any) => {
+        console.log('drag start', node);
+    }
+
+    const undoHandler = () => {
+        undo();
+        console.log("undoing..")
+        console.log(past);
+        console.log(future);
+    }
+
+    const redoHandler = () => {
+        redo();
+        console.log("redoing..")
+        console.log(past);
+        console.log(future);
+    }
+
+    return (
+        <div className='main-canvas' style={{ width: '100vw', height: '100vh'}}>
+            <button onClick={undoHandler} disabled={(past.length==1)}>undo</button>
+            <button onClick={redoHandler} disabled={(future.length==0)}>redo</button>
+            
+            <ReactFlow 
+                nodes={elements.nodes}
+                nodeTypes={nodeTypes}
+                edges={elements.edges}
+
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeDragStop={onNodeDragStop}
+                onNodeDragStart={onNodeDragStart}
+            >
+                <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+            </ReactFlow>
+        </div>
+    );
+}
+
+export default Canvas;
