@@ -17,6 +17,7 @@ import useUndoable from "use-undoable";
 import CustomNode from "../components/CustomNode.tsx";
 import { initialEdges, initialNodes } from "./data.ts";
 import { useHotkeys } from "@mantine/hooks";
+import { v4 as uuid } from "uuid";
 
 const nodeTypes = {
   customNode: CustomNode,
@@ -49,7 +50,6 @@ function Canvas() {
   );
 
   const copyHandler = () => {
-    // get selected nodes
     const selectedNodes = elements.nodes.filter(
       (node) => node.selected === true
     );
@@ -64,36 +64,45 @@ function Canvas() {
     );
 
     if (selectedNodes.length > 0) {
-      // save state
       setNodesToCopy(selectedNodes);
-      // check if any edges were copied
       if (selectedEdges.length > 0) {
         setEdgesToCopy(selectedEdges);
       }
     }
   };
 
-  const pasteHandler = useCallback(() => {
-    const newNodeId = Math.floor(Math.random() * 1000) / 1000;
-    // create new nodes to paste (change id and position of existing)
+  const pasteHandler = () => {
+    const newNodeId = uuid();
+
     const newNodes = nodesToCopy.map((node) => ({
       ...node,
       id: `${node.id}-${newNodeId}`,
-      selected: false,
+      selected: true,
       position: { x: node.position.x + 10, y: node.position.y + 10 },
     }));
-    triggerUpdate("nodes", elements.nodes.concat(newNodes));
 
-    // create new edges to paste
+    triggerUpdate(
+      "nodes",
+      elements.nodes
+        .map((node) => ({ ...node, selected: false }))
+        .concat(newNodes)
+    );
+
     const newEdges = edgesToCopy.map((edge) => ({
       ...edge,
       id: `${edge.id}-${newNodeId}`,
-      selected: false,
+      selected: true,
       source: `${edge.source}-${newNodeId}`,
       target: `${edge.target}-${newNodeId}`,
     }));
-    triggerUpdate("edges", elements.edges.concat(newEdges));
-  }, [nodesToCopy, edgesToCopy, elements, triggerUpdate]);
+
+    triggerUpdate(
+      "edges",
+      elements.edges
+        .map((edge) => ({ ...edge, selected: false }))
+        .concat(newEdges)
+    );
+  };
 
   useHotkeys([
     ["mod+c", () => copyHandler()],
