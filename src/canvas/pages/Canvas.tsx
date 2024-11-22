@@ -7,6 +7,11 @@ import {
   BackgroundVariant,
   applyNodeChanges,
   applyEdgeChanges,
+  type Edge,
+  type Node,
+  type Connection,
+  type NodeChange,
+  type EdgeChange,
 } from "@xyflow/react";
 import useUndoable from "use-undoable";
 import CustomNode from "../components/CustomNode.tsx";
@@ -18,22 +23,23 @@ const nodeTypes = {
 };
 
 function Canvas() {
-  const [elements, setElements, { past, future, undo, redo }] = useUndoable({
+  const [elements, setElements, { past, future, undo, redo }] = useUndoable<{
+    nodes: Node[];
+    edges: Edge[];
+  }>({
     nodes: initialNodes,
     edges: initialEdges,
   });
 
-  const [nodesToCopy, setNodesToCopy] = useState([]);
-  const [edgesToCopy, setEdgesToCopy] = useState(
-    elements.edges.filter((edge) => edge.selected === true)
-  );
+  const [nodesToCopy, setNodesToCopy] = useState<Node[]>([]);
+  const [edgesToCopy, setEdgesToCopy] = useState<Edge[]>([]);
 
   const triggerUpdate = useCallback(
-    (t: any, v: any, overwrite: boolean = false) => {
+    (t: "nodes" | "edges", v: (Node | Edge)[], overwrite = false) => {
       setElements(
         (e) => ({
-          nodes: t === "nodes" ? v : e.nodes,
-          edges: t === "edges" ? v : e.edges,
+          nodes: t === "nodes" ? (v as Node[]) : e.nodes,
+          edges: t === "edges" ? (v as Edge[]) : e.edges,
         }),
         undefined,
         overwrite
@@ -70,28 +76,22 @@ function Canvas() {
   const pasteHandler = useCallback(() => {
     const newNodeId = Math.floor(Math.random() * 1000) / 1000;
     // create new nodes to paste (change id and position of existing)
-    const newNodes = nodesToCopy.map(
-      (node) =>
-        (node = {
-          ...node,
-          id: `${node.id}-${newNodeId}`,
-          selected: false,
-          position: { x: node.position.x + 10, y: node.position.y + 10 },
-        })
-    );
+    const newNodes = nodesToCopy.map((node) => ({
+      ...node,
+      id: `${node.id}-${newNodeId}`,
+      selected: false,
+      position: { x: node.position.x + 10, y: node.position.y + 10 },
+    }));
     triggerUpdate("nodes", elements.nodes.concat(newNodes));
 
     // create new edges to paste
-    const newEdges = edgesToCopy.map(
-      (edge) =>
-        (edge = {
-          ...edge,
-          id: `${edge.id}-${newNodeId}`,
-          selected: false,
-          source: `${edge.source}-${newNodeId}`,
-          target: `${edge.target}-${newNodeId}`,
-        })
-    );
+    const newEdges = edgesToCopy.map((edge) => ({
+      ...edge,
+      id: `${edge.id}-${newNodeId}`,
+      selected: false,
+      source: `${edge.source}-${newNodeId}`,
+      target: `${edge.target}-${newNodeId}`,
+    }));
     triggerUpdate("edges", elements.edges.concat(newEdges));
   }, [nodesToCopy, edgesToCopy, elements, triggerUpdate]);
 
@@ -101,14 +101,14 @@ function Canvas() {
   ]);
 
   const onConnect = useCallback(
-    (connection: any) => {
+    (connection: Connection) => {
       triggerUpdate("edges", addEdge(connection, elements.edges));
     },
     [triggerUpdate, elements.edges]
   );
 
   const onNodesChange = useCallback(
-    (changes: any) => {
+    (changes: NodeChange[]) => {
       if (
         (changes[0].type === "position" && changes[0].dragging) ||
         changes[0].type === "dimensions" ||
@@ -123,7 +123,7 @@ function Canvas() {
   );
 
   const onEdgesChange = useCallback(
-    (changes: any) => {
+    (changes: EdgeChange[]) => {
       triggerUpdate("edges", applyEdgeChanges(changes, elements.edges));
     },
     [triggerUpdate, elements.edges]
