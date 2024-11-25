@@ -5,15 +5,14 @@ import {
   addEdge,
   Background,
   BackgroundVariant,
-  applyNodeChanges,
-  applyEdgeChanges,
   type Edge,
   type Node,
   type Connection,
   type NodeChange,
   type EdgeChange,
+  useNodesState,
+  useEdgesState,
 } from "@xyflow/react";
-import useUndoable from "use-undoable";
 import CustomNode from "../components/CustomNode.tsx";
 import { initialEdges, initialNodes } from "./data.ts";
 import { useHotkeys } from "@mantine/hooks";
@@ -24,39 +23,19 @@ const nodeTypes = {
 };
 
 function Canvas() {
-  const [elements, setElements, { past, future, undo, redo }] = useUndoable<{
-    nodes: Node[];
-    edges: Edge[];
-  }>({
-    nodes: initialNodes,
-    edges: initialEdges,
-  });
-
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
   const [nodesToCopy, setNodesToCopy] = useState<Node[]>([]);
   const [edgesToCopy, setEdgesToCopy] = useState<Edge[]>([]);
 
-  const triggerUpdate = useCallback(
-    (t: "nodes" | "edges", v: (Node | Edge)[], overwrite = false) => {
-      setElements(
-        (e) => ({
-          nodes: t === "nodes" ? (v as Node[]) : e.nodes,
-          edges: t === "edges" ? (v as Edge[]) : e.edges,
-        }),
-        undefined,
-        overwrite
-      );
-    },
-    [setElements]
-  );
-
   const copyHandler = () => {
-    const selectedNodes = elements.nodes.filter(
+    const selectedNodes = nodes.filter(
       (node) => node.selected === true
     );
 
     const selectedNodeIds = selectedNodes.map((nodes) => nodes.id);
 
-    const selectedEdges = elements.edges.filter(
+    const selectedEdges = edges.filter(
       (edge) =>
         edge.selected === true &&
         selectedNodeIds.includes(edge.source) &&
@@ -80,13 +59,10 @@ function Canvas() {
       selected: true,
       position: { x: node.position.x + 10, y: node.position.y + 10 },
     }));
-
-    triggerUpdate(
-      "nodes",
-      elements.nodes
-        .map((node) => ({ ...node, selected: false }))
-        .concat(newNodes)
-    );
+    
+    setNodes(nodes
+      .map((nds) => ({...nds, selected: false }))
+      .concat(newNodes));
 
     const newEdges = edgesToCopy.map((edge) => ({
       ...edge,
@@ -96,12 +72,8 @@ function Canvas() {
       target: `${edge.target}-${newNodeId}`,
     }));
 
-    triggerUpdate(
-      "edges",
-      elements.edges
-        .map((edge) => ({ ...edge, selected: false }))
-        .concat(newEdges)
-    );
+    edges.map((edge) => ({ ...edge, selected: false}))
+    setEdges((eds) => eds.concat(newEdges));
   };
 
   useHotkeys([
@@ -109,33 +81,10 @@ function Canvas() {
     ["mod+v", () => pasteHandler()],
   ]);
 
+
   const onConnect = useCallback(
-    (connection: Connection) => {
-      triggerUpdate("edges", addEdge(connection, elements.edges));
-    },
-    [triggerUpdate, elements.edges]
-  );
-
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      if (
-        (changes[0].type === "position" && changes[0].dragging) ||
-        changes[0].type === "dimensions" ||
-        changes[0].type === "select"
-      ) {
-        triggerUpdate("nodes", applyNodeChanges(changes, elements.nodes), true);
-      } else {
-        triggerUpdate("nodes", applyNodeChanges(changes, elements.nodes));
-      }
-    },
-    [triggerUpdate, elements.nodes]
-  );
-
-  const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => {
-      triggerUpdate("edges", applyEdgeChanges(changes, elements.edges));
-    },
-    [triggerUpdate, elements.edges]
+    (params: any) => setEdges((eds) => addEdge(params, eds)),
+    [setEdges],
   );
 
   return (
@@ -154,7 +103,7 @@ function Canvas() {
       >
         paste
       </button>
-      <button
+      {/* <button
         type="button"
         style={{ background: "white" }}
         onClick={undo}
@@ -169,12 +118,12 @@ function Canvas() {
         disabled={future.length === 0}
       >
         redo
-      </button>
+      </button> */}
 
       <ReactFlow
-        nodes={elements.nodes}
+        nodes={nodes}
         nodeTypes={nodeTypes}
-        edges={elements.edges}
+        edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
