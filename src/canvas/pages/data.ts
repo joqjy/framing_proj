@@ -1,3 +1,5 @@
+import { Node, Edge } from '@xyflow/react';
+
 export const initialNodes = [
   {
     id: "1",
@@ -13,8 +15,8 @@ export const initialNodes = [
     type: "customNode",
     data: { label: "answer" },
   },
-];
+] as Node[];
 
 export const initialEdges = [
   { id: "e1-2", source: "1", target: "2", selected: false },
-];
+] as Edge[];

@@ -1,32 +1,27 @@
 import "@xyflow/react/dist/style.css";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import {
   ReactFlow,
-  addEdge,
   Background,
   BackgroundVariant,
   type Edge,
   type Node,
-  type Connection,
-  type NodeChange,
-  type EdgeChange,
-  useNodesState,
-  useEdgesState,
 } from "@xyflow/react";
 import CustomNode from "../components/CustomNode.tsx";
-import { initialEdges, initialNodes } from "./data.ts";
 import { useHotkeys } from "@mantine/hooks";
 import { v4 as uuid } from "uuid";
+import useStore from '../store';
 
 const nodeTypes = {
   customNode: CustomNode,
 };
 
 function Canvas() {
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
-  const [nodesToCopy, setNodesToCopy] = useState<Node[]>([]);
-  const [edgesToCopy, setEdgesToCopy] = useState<Edge[]>([]);
+  const nodes = useStore((state) => state.nodes);
+  const edges = useStore((state) => state.edges);
+  const nodesToCopy = useStore((state) => state.nodesToCopy);
+  const edgesToCopy = useStore((state) => state.edgesToCopy);
+  const { setNodes, setEdges, onNodesChange, onEdgesChange, onConnect, setNodesToCopy, setEdgesToCopy} = useStore();
 
   const copyHandler = () => {
     const selectedNodes = nodes.filter(
@@ -72,20 +67,15 @@ function Canvas() {
       target: `${edge.target}-${newNodeId}`,
     }));
 
-    edges.map((edge) => ({ ...edge, selected: false}))
-    setEdges((eds) => eds.concat(newEdges));
+    setEdges(edges
+      .map((eds) => ({...eds, selected: false }))
+      .concat(newEdges));
   };
 
   useHotkeys([
     ["mod+c", () => copyHandler()],
     ["mod+v", () => pasteHandler()],
   ]);
-
-
-  const onConnect = useCallback(
-    (params: any) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges],
-  );
 
   return (
     <div className="main-canvas" style={{ width: "100vw", height: "100vh" }}>
