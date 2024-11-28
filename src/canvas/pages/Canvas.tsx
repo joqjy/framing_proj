@@ -3,8 +3,10 @@ import {
   ReactFlow,
   Background,
   BackgroundVariant,
+  Panel,
 } from "@xyflow/react";
 import CustomNode from "../components/CustomNode.tsx";
+import ExportButton from "../components/Export.tsx";
 import { useHotkeys } from "@mantine/hooks";
 import { v4 as uuid } from "uuid";
 import useStore from '../store';
@@ -19,7 +21,7 @@ function Canvas() {
   const nodesToCopy = useStore((state) => state.nodesToCopy);
   const edgesToCopy = useStore((state) => state.edgesToCopy);
   const { setNodes, setEdges, onNodesChange, onEdgesChange, onConnect, setNodesToCopy, setEdgesToCopy} = useStore();
-  const { undo, redo, pause, resume, pastStates, futureStates } = useStore.temporal.getState();
+  const { undo, redo, pause, resume } = useStore.temporal.getState();
 
   const copyHandler = () => {
     const selectedNodes = nodes.filter(
@@ -84,43 +86,16 @@ function Canvas() {
   }
 
   const onNodeClick = () => {
-    // pause();
+    pause();
+  }
+
+  const onSelectionEnd = () => {
+    resume();
   }
   
 
   return (
     <div className="main-canvas" style={{ width: "100vw", height: "100vh" }}>
-      <button
-        type="button"
-        style={{ background: "white" }}
-        onClick={copyHandler}
-      >
-        copy
-      </button>
-      <button
-        type="button"
-        style={{ background: "white" }}
-        onClick={pasteHandler}
-      >
-        paste
-      </button>
-      <button
-        type="button"
-        style={{ background: "white" }}
-        onClick={() => undo()}
-        // disabled={past.length === 0}
-      >
-        undo
-      </button>
-      <button
-        type="button"
-        style={{ background: "white" }}
-        onClick={() => redo()}
-        // disabled={future.length === 0}
-      >
-        redo
-      </button>
-
       <ReactFlow
         nodes={nodes}
         nodeTypes={nodeTypes}
@@ -131,7 +106,39 @@ function Canvas() {
         onNodeDragStart={onNodeDragStart}
         onNodeDragStop={onNodeDragStop}
         onNodeClick={onNodeClick}
+        onSelectionEnd={onSelectionEnd}
       >
+        <Panel>
+          <button
+            type="button"
+            style={{ background: "white" }}
+            onClick={copyHandler}
+          >
+            copy
+          </button>
+          <button
+            type="button"
+            style={{ background: "white" }}
+            onClick={pasteHandler}
+          >
+            paste
+          </button>
+          <button
+            type="button"
+            style={{ background: "white" }}
+            onClick={() => undo()}
+          >
+            undo
+          </button>
+          <button
+            type="button"
+            style={{ background: "white" }}
+            onClick={() => redo()}
+          >
+            redo
+          </button>
+          <ExportButton/>
+        </Panel>
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
       </ReactFlow>
     </div>
